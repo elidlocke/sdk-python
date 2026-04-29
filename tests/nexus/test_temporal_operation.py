@@ -276,3 +276,167 @@ async def test_temporal_operation_sync_result(client: Client, env: WorkflowEnvir
                 EventType.EVENT_TYPE_NEXUS_OPERATION_COMPLETED,
             ],
         )
+
+
+@dataclass
+class TemporalOperationOverloadTestValue:
+    value: int
+
+
+@workflow.defn
+class TemporalOperationOverloadTestWorkflow:
+    @workflow.run
+    async def run(
+        self, input: TemporalOperationOverloadTestValue
+    ) -> TemporalOperationOverloadTestValue:
+        return TemporalOperationOverloadTestValue(value=input.value * 2)
+
+
+@workflow.defn
+class TemporalOperationOverloadTestWorkflowNoParam:
+    @workflow.run
+    async def run(self) -> TemporalOperationOverloadTestValue:
+        return TemporalOperationOverloadTestValue(value=0)
+
+
+@service_handler
+class TemporalOperationOverloadTestServiceHandler:
+    @nexus.temporal_operation
+    async def no_param(
+        self,
+        _ctx: StartOperationContext,
+        client: nexus.TemporalNexusClient,
+        _input: TemporalOperationOverloadTestValue,
+    ) -> nexus.TemporalOperationResult[TemporalOperationOverloadTestValue]:
+        return await client.start_workflow(
+            TemporalOperationOverloadTestWorkflowNoParam.run,
+            id=str(uuid.uuid4()),
+        )
+
+    @nexus.temporal_operation
+    async def single_param(
+        self,
+        _ctx: StartOperationContext,
+        client: nexus.TemporalNexusClient,
+        input: TemporalOperationOverloadTestValue,
+    ) -> nexus.TemporalOperationResult[TemporalOperationOverloadTestValue]:
+        return await client.start_workflow(
+            TemporalOperationOverloadTestWorkflow.run,
+            input,
+            id=str(uuid.uuid4()),
+        )
+
+    @nexus.temporal_operation
+    async def multi_param(
+        self,
+        _ctx: StartOperationContext,
+        client: nexus.TemporalNexusClient,
+        input: TemporalOperationOverloadTestValue,
+    ) -> nexus.TemporalOperationResult[TemporalOperationOverloadTestValue]:
+        return await client.start_workflow(
+            TemporalOperationOverloadTestWorkflow.run,
+            args=[input],
+            id=str(uuid.uuid4()),
+        )
+
+    @nexus.temporal_operation
+    async def by_name(
+        self,
+        _ctx: StartOperationContext,
+        client: nexus.TemporalNexusClient,
+        input: TemporalOperationOverloadTestValue,
+    ) -> nexus.TemporalOperationResult[TemporalOperationOverloadTestValue]:
+        return await client.start_workflow(
+            "TemporalOperationOverloadTestWorkflow",
+            input,
+            id=str(uuid.uuid4()),
+            result_type=TemporalOperationOverloadTestValue,
+        )
+
+    @nexus.temporal_operation
+    async def by_name_multi_param(
+        self,
+        _ctx: StartOperationContext,
+        client: nexus.TemporalNexusClient,
+        input: TemporalOperationOverloadTestValue,
+    ) -> nexus.TemporalOperationResult[TemporalOperationOverloadTestValue]:
+        return await client.start_workflow(
+            "TemporalOperationOverloadTestWorkflow",
+            args=[input],
+            id=str(uuid.uuid4()),
+            result_type=TemporalOperationOverloadTestValue,
+        )
+
+
+@workflow.defn
+class TemporalOperationOverloadTestCallerWorkflow:
+    @workflow.run
+    async def run(
+        self, op: str, input: TemporalOperationOverloadTestValue
+    ) -> TemporalOperationOverloadTestValue:
+        client = workflow.create_nexus_client(
+            service=TemporalOperationOverloadTestServiceHandler,
+            endpoint=make_nexus_endpoint_name(workflow.info().task_queue),
+        )
+
+        if op == "no_param":
+            return await client.execute_operation(
+                TemporalOperationOverloadTestServiceHandler.no_param, input
+            )
+        elif op == "single_param":
+            return await client.execute_operation(
+                TemporalOperationOverloadTestServiceHandler.single_param, input
+            )
+        elif op == "multi_param":
+            return await client.execute_operation(
+                TemporalOperationOverloadTestServiceHandler.multi_param, input
+            )
+        elif op == "by_name":
+            return await client.execute_operation(
+                TemporalOperationOverloadTestServiceHandler.by_name, input
+            )
+        elif op == "by_name_multi_param":
+            return await client.execute_operation(
+                TemporalOperationOverloadTestServiceHandler.by_name_multi_param, input
+            )
+        else:
+            raise ValueError(f"Unknown op: {op}")
+
+
+@pytest.mark.parametrize(
+    "op",
+    [
+        "no_param",
+        "single_param",
+        "multi_param",
+        "by_name",
+        "by_name_multi_param",
+    ],
+)
+async def test_temporal_operation_overloads(
+    client: Client, env: WorkflowEnvironment, op: str
+):
+    task_queue = str(uuid.uuid4())
+    endpoint_name = make_nexus_endpoint_name(task_queue)
+    await env.create_nexus_endpoint(endpoint_name, task_queue)
+    async with Worker(
+        client,
+        task_queue=task_queue,
+        workflows=[
+            TemporalOperationOverloadTestCallerWorkflow,
+            TemporalOperationOverloadTestWorkflow,
+            TemporalOperationOverloadTestWorkflowNoParam,
+        ],
+        nexus_service_handlers=[TemporalOperationOverloadTestServiceHandler()],
+    ):
+        result = await client.execute_workflow(
+            TemporalOperationOverloadTestCallerWorkflow.run,
+            args=[op, TemporalOperationOverloadTestValue(value=2)],
+            id=str(uuid.uuid4()),
+            task_queue=task_queue,
+        )
+        assert result == (
+            TemporalOperationOverloadTestValue(value=0)
+            if op == "no_param"
+            else TemporalOperationOverloadTestValue(value=4)
+        )

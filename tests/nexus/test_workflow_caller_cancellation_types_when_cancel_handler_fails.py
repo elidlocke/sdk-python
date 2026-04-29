@@ -24,8 +24,8 @@ from temporalio.common import WorkflowIDConflictPolicy
 from temporalio.testing import WorkflowEnvironment
 from temporalio.worker import Worker
 from tests.helpers.nexus import make_nexus_endpoint_name
+from tests.helpers import assert_event_subsequence
 from tests.nexus.test_workflow_caller_cancellation_types import (
-    assert_event_subsequence,
     get_event_time,
     has_event,
 )
