@@ -199,7 +199,7 @@ def temporal_operation(
         ],
     ]
 ):
-    """Decorator marking a method as the start method for a workflow-backed operation."""
+    """Decorator marking a method as the start method for an operation that interacts with Temporal."""
 
     def decorator(
         start: Callable[
