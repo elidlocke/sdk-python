@@ -11,6 +11,8 @@ from typing_extensions import Self
 
 
 class OperationTokenType(IntEnum):
+    """Type discriminator for Nexus operation tokens."""
+
     WORKFLOW = 1
 
 
@@ -20,6 +22,8 @@ if TYPE_CHECKING:
 
 @dataclass(frozen=True, kw_only=True)
 class OperationToken:
+    """Serializable token identifying a Nexus operation target."""
+
     version: int | None = None
     type: OperationTokenType
     namespace: str

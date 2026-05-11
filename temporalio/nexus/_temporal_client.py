@@ -48,10 +48,12 @@ class TemporalOperationResult(Generic[_ResultT]):
 
     @classmethod
     def sync(cls, value: _ResultT) -> "TemporalOperationResult[_ResultT]":
+        """Create a result that completes the Nexus operation synchronously."""
         return cls(value=value)
 
     @classmethod
     def async_token(cls, token: str) -> Self:
+        """Create a result that completes the Nexus operation asynchronously."""
         return cls(token=token)
 
     def _to_nexus_result(
@@ -71,11 +73,13 @@ class TemporalNexusClient:
     """Nexus-aware wrapper around a Temporal Client."""
 
     def __init__(self) -> None:
+        """Initialize the client wrapper from the active Nexus operation context."""
         self._temporal_context = _TemporalStartOperationContext.get()
         self.started_async = asyncio.Event()
 
     @property
     def client(self) -> temporalio.client.Client:
+        """Return the Temporal client for the active Nexus operation."""
         return self._temporal_context.client
 
     # Overload for no-param workflow
@@ -245,6 +249,7 @@ class TemporalNexusClient:
         priority: temporalio.common.Priority = temporalio.common.Priority.default,
         versioning_override: temporalio.common.VersioningOverride | None = None,
     ) -> TemporalOperationResult[ReturnType]:
+        """Start a workflow as the backing asynchronous Nexus operation."""
         if self.started_async.is_set():
             raise HandlerError(
                 "Only one async operation can be started per operation handler invocation. Use TemporalNexusClient.client for additional workflow interactions",

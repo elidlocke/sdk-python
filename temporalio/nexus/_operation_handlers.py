@@ -143,11 +143,13 @@ class TemporalNexusOperationHandler(OperationHandler[InputT, OutputT]):
     async def start(
         self, ctx: StartOperationContext, input: InputT
     ) -> StartOperationResultSync[OutputT] | StartOperationResultAsync:
+        """Start the Nexus operation using a Nexus-aware Temporal client."""
         nexus_client = TemporalNexusClient()
         result = await self._start(ctx, nexus_client, input)
         return result._to_nexus_result()
 
     async def cancel(self, ctx: CancelOperationContext, token: str) -> None:
+        """Cancel a Nexus operation using its operation token."""
         temporal_context = _TemporalCancelOperationContext.get()
         client = temporal_context.client
 
