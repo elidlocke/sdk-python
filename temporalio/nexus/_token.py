@@ -4,9 +4,10 @@ import base64
 import json
 from dataclasses import dataclass
 from enum import IntEnum
-from typing import TYPE_CHECKING, Any, Generic, Self
+from typing import TYPE_CHECKING, Any, Generic
 
 from nexusrpc import OutputT
+from typing_extensions import Self
 
 
 class OperationTokenType(IntEnum):
