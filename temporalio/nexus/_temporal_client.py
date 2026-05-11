@@ -9,7 +9,6 @@ from typing import (
     Any,
     Concatenate,
     Generic,
-    Self,
     TypeVar,
     cast,
     overload,
@@ -17,6 +16,7 @@ from typing import (
 
 from nexusrpc import HandlerError, HandlerErrorType
 from nexusrpc.handler import StartOperationResultAsync, StartOperationResultSync
+from typing_extensions import Self
 
 import temporalio.common
 from temporalio.nexus._operation_context import (
