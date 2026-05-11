@@ -3,7 +3,7 @@
 See https://github.com/temporalio/sdk-python/tree/main#nexus
 """
 
-from ._decorators import workflow_run_operation, temporal_operation
+from ._decorators import temporal_operation, workflow_run_operation
 from ._operation_context import (
     Info,
     LoggerAdapter,
@@ -18,8 +18,8 @@ from ._operation_context import (
     wait_for_worker_shutdown,
     wait_for_worker_shutdown_sync,
 )
-from ._token import WorkflowHandle
 from ._temporal_client import TemporalNexusClient, TemporalOperationResult
+from ._token import WorkflowHandle
 
 __all__ = (
     "workflow_run_operation",

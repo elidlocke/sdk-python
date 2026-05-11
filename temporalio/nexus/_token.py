@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 import base64
-from enum import IntEnum
 import json
 from dataclasses import dataclass
+from enum import IntEnum
 from typing import TYPE_CHECKING, Any, Generic, Self
 
 from nexusrpc import OutputT

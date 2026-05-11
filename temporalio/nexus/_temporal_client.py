@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import asyncio
-from collections.abc import Awaitable, Callable, Sequence, Mapping
+from collections.abc import Awaitable, Callable, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import timedelta
 from typing import (
@@ -11,14 +11,18 @@ from typing import (
     Generic,
     Self,
     TypeVar,
-    overload,
     cast,
+    overload,
 )
 
 from nexusrpc import HandlerError, HandlerErrorType
 from nexusrpc.handler import StartOperationResultAsync, StartOperationResultSync
 
 import temporalio.common
+from temporalio.nexus._operation_context import (
+    _start_nexus_backing_workflow,
+    _TemporalStartOperationContext,
+)
 from temporalio.types import (
     MethodAsyncNoParam,
     MethodAsyncSingleParam,
@@ -26,10 +30,6 @@ from temporalio.types import (
     ParamType,
     ReturnType,
     SelfType,
-)
-from temporalio.nexus._operation_context import (
-    _TemporalStartOperationContext,
-    _start_nexus_backing_workflow,
 )
 
 if TYPE_CHECKING:

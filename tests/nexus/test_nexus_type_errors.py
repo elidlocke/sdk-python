@@ -235,13 +235,13 @@ class MyWorkflow1:
         _output_2_1: MyOutput = await _handle_2
 
         # temporal operation
-        _output_3: None = await nexus_client.execute_operation(
+        _output_3: None = await nexus_client.execute_operation(  # type: ignore
             MyService.my_temporal_operation, 0
         )
         _handle_3: workflow.NexusOperationHandle[
             None
         ] = await nexus_client.start_operation(MyService.my_temporal_operation, 0)
-        _output_3_1: None = await _handle_3
+        _output_3_1: None = await _handle_3  # type: ignore
 
 
 @workflow.defn
@@ -281,7 +281,7 @@ class MyWorkflow2:
         _output_2_1: MyOutput = await _handle_2
 
         # temporal operation
-        _output_3: None = await nexus_client.execute_operation(
+        _output_3: None = await nexus_client.execute_operation(  # type: ignore
             MyServiceHandler.my_temporal_operation, 0
         )
         _handle_3: workflow.NexusOperationHandle[
@@ -289,7 +289,7 @@ class MyWorkflow2:
         ] = await nexus_client.start_operation(
             MyServiceHandler.my_temporal_operation, 0
         )
-        _output_3_1: None = await _handle_3
+        _output_3_1: None = await _handle_3  # type: ignore
 
 
 @workflow.defn
