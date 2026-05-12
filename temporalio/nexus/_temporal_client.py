@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-import asyncio
-from collections.abc import Awaitable, Callable, Mapping, Sequence
+from collections.abc import Awaitable, Callable, Iterator, Mapping, Sequence
+from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import timedelta
 from typing import (
@@ -75,12 +75,28 @@ class TemporalNexusClient:
     def __init__(self) -> None:
         """Initialize the client wrapper from the active Nexus operation context."""
         self._temporal_context = _TemporalStartOperationContext.get()
-        self.started_async = asyncio.Event()
+        self._started_async = False
 
     @property
     def client(self) -> temporalio.client.Client:
         """Return the Temporal client for the active Nexus operation."""
         return self._temporal_context.client
+
+    @contextmanager
+    def _reserve_async_start(self) -> Iterator[None]:
+        if self._started_async:
+            raise HandlerError(
+                "Only one async operation can be started per operation handler invocation. Use TemporalNexusClient.client for additional workflow interactions",
+                type=HandlerErrorType.BAD_REQUEST,
+            )
+
+        # Reserve the started flag before sending to prevent concurrent starts
+        self._started_async = True
+        try:
+            yield
+        except:
+            self._started_async = False
+            raise
 
     # Overload for no-param workflow
     @overload
@@ -250,39 +266,35 @@ class TemporalNexusClient:
         versioning_override: temporalio.common.VersioningOverride | None = None,
     ) -> TemporalOperationResult[ReturnType]:
         """Start a workflow as the backing asynchronous Nexus operation."""
-        if self.started_async.is_set():
-            raise HandlerError(
-                "Only one async operation can be started per operation handler invocation. Use TemporalNexusClient.client for additional workflow interactions",
-                type=HandlerErrorType.BAD_REQUEST,
+
+        with self._reserve_async_start():
+            wf_handle = await _start_nexus_backing_workflow(
+                temporal_context=self._temporal_context,
+                workflow=workflow,
+                arg=arg,
+                args=args,
+                id=id,
+                task_queue=task_queue,
+                result_type=result_type,
+                execution_timeout=execution_timeout,
+                run_timeout=run_timeout,
+                task_timeout=task_timeout,
+                id_reuse_policy=id_reuse_policy,
+                id_conflict_policy=id_conflict_policy,
+                retry_policy=retry_policy,
+                cron_schedule=cron_schedule,
+                memo=memo,
+                search_attributes=search_attributes,
+                static_summary=static_summary,
+                static_details=static_details,
+                start_delay=start_delay,
+                start_signal=start_signal,
+                start_signal_args=start_signal_args,
+                rpc_metadata=rpc_metadata,
+                rpc_timeout=rpc_timeout,
+                request_eager_start=request_eager_start,
+                priority=priority,
+                versioning_override=versioning_override,
             )
 
-        wf_handle = await _start_nexus_backing_workflow(
-            temporal_context=self._temporal_context,
-            workflow=workflow,
-            arg=arg,
-            args=args,
-            id=id,
-            task_queue=task_queue,
-            result_type=result_type,
-            execution_timeout=execution_timeout,
-            run_timeout=run_timeout,
-            task_timeout=task_timeout,
-            id_reuse_policy=id_reuse_policy,
-            id_conflict_policy=id_conflict_policy,
-            retry_policy=retry_policy,
-            cron_schedule=cron_schedule,
-            memo=memo,
-            search_attributes=search_attributes,
-            static_summary=static_summary,
-            static_details=static_details,
-            start_delay=start_delay,
-            start_signal=start_signal,
-            start_signal_args=start_signal_args,
-            rpc_metadata=rpc_metadata,
-            rpc_timeout=rpc_timeout,
-            request_eager_start=request_eager_start,
-            priority=priority,
-            versioning_override=versioning_override,
-        )
-        self.started_async.set()
         return TemporalOperationResult.async_token(wf_handle.to_token())

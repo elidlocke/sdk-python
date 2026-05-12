@@ -1,3 +1,4 @@
+import asyncio
 import uuid
 from dataclasses import dataclass
 
@@ -12,6 +13,7 @@ from nexusrpc.handler import (
 import temporalio.exceptions
 from temporalio import nexus, workflow
 from temporalio.client import Client, WorkflowFailureError
+from temporalio.common import WorkflowIDConflictPolicy
 from temporalio.testing import WorkflowEnvironment
 from temporalio.worker import Worker
 from tests.helpers import EventType, assert_event_subsequence
@@ -36,6 +38,8 @@ class TestService:
     echo: Operation[Input, str]
     blocking: Operation[None, None]
     double_start: Operation[Input, None]
+    concurrent_start: Operation[Input, str]
+    retry_after_failed_start: Operation[Input, str]
     sync_result: Operation[Input, str]
 
 
@@ -77,6 +81,73 @@ class EchoServiceHandler:
             EchoWorkflow.run, input, id=f"double-start-{uuid.uuid4}"
         )
         return nexus.TemporalOperationResult.sync(None)
+
+    @nexus.temporal_operation
+    async def concurrent_start(
+        self,
+        _ctx: StartOperationContext,
+        client: nexus.TemporalNexusClient,
+        input: Input,
+    ) -> nexus.TemporalOperationResult[str]:
+        results = await asyncio.gather(
+            client.start_workflow(
+                EchoWorkflow.run,
+                input,
+                id=f"concurrent-start-1-{uuid.uuid4()}",
+            ),
+            client.start_workflow(
+                EchoWorkflow.run,
+                input,
+                id=f"concurrent-start-2-{uuid.uuid4()}",
+            ),
+            return_exceptions=True,
+        )
+
+        async_results: list[nexus.TemporalOperationResult[str]] = []
+        handler_errors: list[nexusrpc.HandlerError] = []
+        for result in results:
+            if isinstance(result, nexus.TemporalOperationResult):
+                async_results.append(result)
+            elif isinstance(result, nexusrpc.HandlerError):
+                handler_errors.append(result)
+            elif isinstance(result, BaseException):
+                raise result
+            else:
+                raise RuntimeError(f"Unexpected concurrent start result: {result}")
+
+        if (
+            len(async_results) == 1
+            and len(handler_errors) == 1
+            and handler_errors[0].type == HandlerErrorType.BAD_REQUEST
+        ):
+            return async_results[0]
+
+        raise RuntimeError(
+            "Expected one async workflow start and one BAD_REQUEST HandlerError, "
+            f"got {len(async_results)} starts and {len(handler_errors)} handler errors"
+        )
+
+    @nexus.temporal_operation
+    async def retry_after_failed_start(
+        self,
+        _ctx: StartOperationContext,
+        client: nexus.TemporalNexusClient,
+        input: Input,
+    ) -> nexus.TemporalOperationResult[str]:
+        try:
+            await client.start_workflow(
+                BlockingWorkflow.run,
+                id=input.value,
+                id_conflict_policy=WorkflowIDConflictPolicy.FAIL,
+            )
+        except temporalio.exceptions.WorkflowAlreadyStartedError:
+            return await client.start_workflow(
+                EchoWorkflow.run,
+                input,
+                id=f"retry-after-failed-start-{uuid.uuid4()}",
+            )
+
+        raise RuntimeError("Expected first workflow start to fail")
 
     @nexus.temporal_operation
     async def sync_result(
@@ -206,6 +277,29 @@ class DoubleStartWorkflowCaller:
         return await op_handle
 
 
+@workflow.defn
+class ConcurrentStartWorkflowCaller:
+    @workflow.run
+    async def run(self, input: Input) -> str:
+        client = workflow.create_nexus_client(
+            service=TestService, endpoint=make_nexus_endpoint_name(input.task_queue)
+        )
+        return await client.execute_operation(TestService.concurrent_start, input)
+
+
+@workflow.defn
+class FailedStartRollbackWorkflowCaller:
+    @workflow.run
+    async def run(self, input: Input) -> str:
+        client = workflow.create_nexus_client(
+            service=TestService, endpoint=make_nexus_endpoint_name(input.task_queue)
+        )
+        return await client.execute_operation(
+            TestService.retry_after_failed_start,
+            input,
+        )
+
+
 async def test_temporal_operation_double_start_raises_handler_err(
     client: Client, env: WorkflowEnvironment
 ):
@@ -233,6 +327,63 @@ async def test_temporal_operation_double_start_raises_handler_err(
             "Only one async operation can be started per operation handler invocation"
             in err.value.cause.cause.message
         )
+
+
+async def test_temporal_operation_concurrent_start_raises_handler_err(
+    client: Client, env: WorkflowEnvironment
+):
+    task_queue = str(uuid.uuid4())
+    endpoint_name = make_nexus_endpoint_name(task_queue)
+    await env.create_nexus_endpoint(endpoint_name, task_queue)
+    async with Worker(
+        env.client,
+        task_queue=task_queue,
+        nexus_service_handlers=[EchoServiceHandler()],
+        workflows=[EchoWorkflow, ConcurrentStartWorkflowCaller],
+    ):
+        result = await client.execute_workflow(
+            ConcurrentStartWorkflowCaller.run,
+            Input(value="test", task_queue=task_queue),
+            task_queue=task_queue,
+            id=f"concurrent-start-{uuid.uuid4()}",
+        )
+
+        assert result == "test"
+
+
+async def test_temporal_operation_failed_start_allows_retry(
+    client: Client, env: WorkflowEnvironment
+):
+    task_queue = str(uuid.uuid4())
+    endpoint_name = make_nexus_endpoint_name(task_queue)
+    conflict_id = f"failed-start-rollback-{uuid.uuid4()}"
+    await env.create_nexus_endpoint(endpoint_name, task_queue)
+    async with Worker(
+        env.client,
+        task_queue=task_queue,
+        nexus_service_handlers=[EchoServiceHandler()],
+        workflows=[
+            BlockingWorkflow,
+            EchoWorkflow,
+            FailedStartRollbackWorkflowCaller,
+        ],
+    ):
+        conflict_handle = await client.start_workflow(
+            BlockingWorkflow.run,
+            id=conflict_id,
+            task_queue=task_queue,
+        )
+
+        try:
+            result = await client.execute_workflow(
+                FailedStartRollbackWorkflowCaller.run,
+                Input(value=conflict_id, task_queue=task_queue),
+                task_queue=task_queue,
+                id=f"failed-start-rollback-caller-{uuid.uuid4()}",
+            )
+            assert result == conflict_id
+        finally:
+            await conflict_handle.cancel()
 
 
 @workflow.defn
