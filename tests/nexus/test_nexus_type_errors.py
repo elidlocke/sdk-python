@@ -365,3 +365,9 @@ class MyWorkflow5:
             MyServiceHandler2.my_sync_operation,  # type: ignore
             MyInput(),
         )
+        # assert-type-error-pyright: 'No overloads for "execute_operation" match'
+        await nexus_client.execute_operation(  # type: ignore
+            # assert-type-error-pyright: 'Argument of type .+ cannot be assigned to parameter "operation"'
+            MyServiceHandler2.my_temporal_operation,  # type: ignore
+            0,
+        )
