@@ -266,7 +266,6 @@ class TemporalNexusClient:
         versioning_override: temporalio.common.VersioningOverride | None = None,
     ) -> TemporalOperationResult[ReturnType]:
         """Start a workflow as the backing asynchronous Nexus operation."""
-
         with self._reserve_async_start():
             wf_handle = await _start_nexus_backing_workflow(
                 temporal_context=self._temporal_context,
