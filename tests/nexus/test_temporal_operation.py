@@ -64,7 +64,7 @@ class EchoServiceHandler:
         _input: None,
     ) -> nexus.TemporalOperationResult[None]:
         return await client.start_workflow(
-            BlockingWorkflow.run, id=f"blocking-{uuid.uuid4}"
+            BlockingWorkflow.run, id=f"blocking-{uuid.uuid4()}"
         )
 
     @nexus.temporal_operation
@@ -75,10 +75,10 @@ class EchoServiceHandler:
         input: Input,
     ) -> nexus.TemporalOperationResult[None]:
         await client.start_workflow(
-            EchoWorkflow.run, input, id=f"double-start-{uuid.uuid4}"
+            EchoWorkflow.run, input, id=f"double-start-{uuid.uuid4()}"
         )
         await client.start_workflow(
-            EchoWorkflow.run, input, id=f"double-start-{uuid.uuid4}"
+            EchoWorkflow.run, input, id=f"double-start-{uuid.uuid4()}"
         )
         return nexus.TemporalOperationResult.sync(None)
 

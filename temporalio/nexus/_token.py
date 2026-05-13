@@ -68,7 +68,13 @@ class OperationToken:
                 f"invalid token: expected token type to be an int, got {type(raw_token_type)}"
             )
 
-        token_type = OperationTokenType(raw_token_type)
+        try:
+            token_type = OperationTokenType(raw_token_type)
+        except ValueError as err:
+            raise TypeError(
+                f"invalid token: unknown token type, got {raw_token_type}.",
+                f"Valid values: {', '.join([f'{t.value} ({t.name})' for t in OperationTokenType])}",
+            ) from err
 
         version = token_details.get("v")
         if version is not None and not isinstance(version, int):
@@ -90,7 +96,7 @@ class OperationToken:
         namespace = token_details.get("ns")
         if not isinstance(namespace, str) or not namespace:
             raise TypeError(
-                f"invalid token: expected namespace to be a string or null, got {type(namespace)}"
+                f"invalid token: expected namespace to be a non-empty string, got {type(namespace)}"
             )
 
         return cls(

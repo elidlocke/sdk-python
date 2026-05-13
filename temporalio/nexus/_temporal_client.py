@@ -94,7 +94,7 @@ class TemporalNexusClient:
         self._started_async = True
         try:
             yield
-        except:
+        except BaseException:
             self._started_async = False
             raise
 
