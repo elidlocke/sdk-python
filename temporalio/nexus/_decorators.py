@@ -18,7 +18,10 @@ from temporalio.nexus._temporal_client import (
     TemporalOperationResult,
 )
 
-from ._operation_context import WorkflowRunOperationContext
+from ._operation_context import (
+    TemporalStartOperationContext,
+    WorkflowRunOperationContext,
+)
 from ._operation_handlers import (
     TemporalNexusOperationHandler,
     WorkflowRunOperationHandler,
@@ -144,11 +147,11 @@ def workflow_run_operation(
 @overload
 def temporal_operation(
     start: Callable[
-        [ServiceHandlerT, StartOperationContext, TemporalNexusClient, InputT],
+        [ServiceHandlerT, TemporalStartOperationContext, TemporalNexusClient, InputT],
         Awaitable[TemporalOperationResult[OutputT]],
     ],
 ) -> Callable[
-    [ServiceHandlerT, StartOperationContext, TemporalNexusClient, InputT],
+    [ServiceHandlerT, TemporalStartOperationContext, TemporalNexusClient, InputT],
     Awaitable[TemporalOperationResult[OutputT]],
 ]: ...
 
@@ -160,12 +163,17 @@ def temporal_operation(
 ) -> Callable[
     [
         Callable[
-            [ServiceHandlerT, StartOperationContext, TemporalNexusClient, InputT],
+            [
+                ServiceHandlerT,
+                TemporalStartOperationContext,
+                TemporalNexusClient,
+                InputT,
+            ],
             Awaitable[TemporalOperationResult[OutputT]],
         ]
     ],
     Callable[
-        [ServiceHandlerT, StartOperationContext, TemporalNexusClient, InputT],
+        [ServiceHandlerT, TemporalStartOperationContext, TemporalNexusClient, InputT],
         Awaitable[TemporalOperationResult[OutputT]],
     ],
 ]: ...
@@ -175,7 +183,12 @@ def temporal_operation(
     start: None
     | (
         Callable[
-            [ServiceHandlerT, StartOperationContext, TemporalNexusClient, InputT],
+            [
+                ServiceHandlerT,
+                TemporalStartOperationContext,
+                TemporalNexusClient,
+                InputT,
+            ],
             Awaitable[TemporalOperationResult[OutputT]],
         ]
     ) = None,
@@ -183,18 +196,28 @@ def temporal_operation(
     name: str | None = None,
 ) -> (
     Callable[
-        [ServiceHandlerT, StartOperationContext, TemporalNexusClient, InputT],
+        [ServiceHandlerT, TemporalStartOperationContext, TemporalNexusClient, InputT],
         Awaitable[TemporalOperationResult[OutputT]],
     ]
     | Callable[
         [
             Callable[
-                [ServiceHandlerT, StartOperationContext, TemporalNexusClient, InputT],
+                [
+                    ServiceHandlerT,
+                    TemporalStartOperationContext,
+                    TemporalNexusClient,
+                    InputT,
+                ],
                 Awaitable[TemporalOperationResult[OutputT]],
             ]
         ],
         Callable[
-            [ServiceHandlerT, StartOperationContext, TemporalNexusClient, InputT],
+            [
+                ServiceHandlerT,
+                TemporalStartOperationContext,
+                TemporalNexusClient,
+                InputT,
+            ],
             Awaitable[TemporalOperationResult[OutputT]],
         ],
     ]
@@ -203,11 +226,16 @@ def temporal_operation(
 
     def decorator(
         start: Callable[
-            [ServiceHandlerT, StartOperationContext, TemporalNexusClient, InputT],
+            [
+                ServiceHandlerT,
+                TemporalStartOperationContext,
+                TemporalNexusClient,
+                InputT,
+            ],
             Awaitable[TemporalOperationResult[OutputT]],
         ],
     ) -> Callable[
-        [ServiceHandlerT, StartOperationContext, TemporalNexusClient, InputT],
+        [ServiceHandlerT, TemporalStartOperationContext, TemporalNexusClient, InputT],
         Awaitable[TemporalOperationResult[OutputT]],
     ]:
         (
@@ -223,7 +251,7 @@ def temporal_operation(
             ) -> TemporalOperationResult[OutputT]:
                 return await start(
                     self,
-                    ctx,
+                    TemporalStartOperationContext._from_start_operation_context(ctx),
                     client,
                     input,
                 )

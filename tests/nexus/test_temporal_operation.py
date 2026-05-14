@@ -6,7 +6,6 @@ import nexusrpc
 import pytest
 from nexusrpc import HandlerErrorType, Operation, service
 from nexusrpc.handler import (
-    StartOperationContext,
     service_handler,
 )
 
@@ -48,7 +47,7 @@ class EchoServiceHandler:
     @nexus.temporal_operation
     async def echo(
         self,
-        _ctx: StartOperationContext,
+        _ctx: nexus.TemporalStartOperationContext,
         client: nexus.TemporalNexusClient,
         input: Input,
     ) -> nexus.TemporalOperationResult[str]:
@@ -59,7 +58,7 @@ class EchoServiceHandler:
     @nexus.temporal_operation
     async def blocking(
         self,
-        _ctx: StartOperationContext,
+        _ctx: nexus.TemporalStartOperationContext,
         client: nexus.TemporalNexusClient,
         _input: None,
     ) -> nexus.TemporalOperationResult[None]:
@@ -70,7 +69,7 @@ class EchoServiceHandler:
     @nexus.temporal_operation
     async def double_start(
         self,
-        _ctx: StartOperationContext,
+        _ctx: nexus.TemporalStartOperationContext,
         client: nexus.TemporalNexusClient,
         input: Input,
     ) -> nexus.TemporalOperationResult[None]:
@@ -85,7 +84,7 @@ class EchoServiceHandler:
     @nexus.temporal_operation
     async def concurrent_start(
         self,
-        _ctx: StartOperationContext,
+        _ctx: nexus.TemporalStartOperationContext,
         client: nexus.TemporalNexusClient,
         input: Input,
     ) -> nexus.TemporalOperationResult[str]:
@@ -130,7 +129,7 @@ class EchoServiceHandler:
     @nexus.temporal_operation
     async def retry_after_failed_start(
         self,
-        _ctx: StartOperationContext,
+        _ctx: nexus.TemporalStartOperationContext,
         client: nexus.TemporalNexusClient,
         input: Input,
     ) -> nexus.TemporalOperationResult[str]:
@@ -152,7 +151,7 @@ class EchoServiceHandler:
     @nexus.temporal_operation
     async def sync_result(
         self,
-        _ctx: StartOperationContext,
+        _ctx: nexus.TemporalStartOperationContext,
         _client: nexus.TemporalNexusClient,
         input: Input,
     ) -> nexus.TemporalOperationResult[str]:
@@ -451,7 +450,7 @@ class TemporalOperationOverloadTestServiceHandler:
     @nexus.temporal_operation
     async def no_param(
         self,
-        _ctx: StartOperationContext,
+        _ctx: nexus.TemporalStartOperationContext,
         client: nexus.TemporalNexusClient,
         _input: TemporalOperationOverloadTestValue,
     ) -> nexus.TemporalOperationResult[TemporalOperationOverloadTestValue]:
@@ -463,7 +462,7 @@ class TemporalOperationOverloadTestServiceHandler:
     @nexus.temporal_operation
     async def single_param(
         self,
-        _ctx: StartOperationContext,
+        _ctx: nexus.TemporalStartOperationContext,
         client: nexus.TemporalNexusClient,
         input: TemporalOperationOverloadTestValue,
     ) -> nexus.TemporalOperationResult[TemporalOperationOverloadTestValue]:
@@ -476,7 +475,7 @@ class TemporalOperationOverloadTestServiceHandler:
     @nexus.temporal_operation
     async def multi_param(
         self,
-        _ctx: StartOperationContext,
+        _ctx: nexus.TemporalStartOperationContext,
         client: nexus.TemporalNexusClient,
         input: TemporalOperationOverloadTestValue,
     ) -> nexus.TemporalOperationResult[TemporalOperationOverloadTestValue]:
@@ -489,7 +488,7 @@ class TemporalOperationOverloadTestServiceHandler:
     @nexus.temporal_operation
     async def by_name(
         self,
-        _ctx: StartOperationContext,
+        _ctx: nexus.TemporalStartOperationContext,
         client: nexus.TemporalNexusClient,
         input: TemporalOperationOverloadTestValue,
     ) -> nexus.TemporalOperationResult[TemporalOperationOverloadTestValue]:
@@ -503,7 +502,7 @@ class TemporalOperationOverloadTestServiceHandler:
     @nexus.temporal_operation
     async def by_name_multi_param(
         self,
-        _ctx: StartOperationContext,
+        _ctx: nexus.TemporalStartOperationContext,
         client: nexus.TemporalNexusClient,
         input: TemporalOperationOverloadTestValue,
     ) -> nexus.TemporalOperationResult[TemporalOperationOverloadTestValue]:

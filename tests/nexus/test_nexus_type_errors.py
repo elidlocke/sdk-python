@@ -89,7 +89,7 @@ class MyServiceHandler:
     @temporalio.nexus.temporal_operation
     async def my_temporal_operation(
         self,
-        _ctx: nexusrpc.handler.StartOperationContext,
+        _ctx: temporalio.nexus.TemporalStartOperationContext,
         client: temporalio.nexus.TemporalNexusClient,
         input: int,
     ) -> temporalio.nexus.TemporalOperationResult[None]:
@@ -169,7 +169,7 @@ class MyServiceHandler2:
     @temporalio.nexus.temporal_operation
     async def my_temporal_operation(
         self,
-        _ctx: nexusrpc.handler.StartOperationContext,
+        _ctx: temporalio.nexus.TemporalStartOperationContext,
         _client: temporalio.nexus.TemporalNexusClient,
         _input: int,
     ) -> temporalio.nexus.TemporalOperationResult[None]:
@@ -193,10 +193,47 @@ class MyServiceHandlerWithoutServiceDefinition:
     @temporalio.nexus.temporal_operation
     async def my_temporal_operation(
         self,
-        _ctx: nexusrpc.handler.StartOperationContext,
+        _ctx: temporalio.nexus.TemporalStartOperationContext,
         _client: temporalio.nexus.TemporalNexusClient,
         _input: int,
     ) -> temporalio.nexus.TemporalOperationResult[None]:
+        raise NotImplementedError
+
+
+class MyUnsafeContextAnnotationServiceHandler:
+    # A temporal operation receives TemporalStartOperationContext at runtime, so
+    # so requiring an arbitrary user subclass is not safe.
+    class MyCustomTemporalStartOperationContext(
+        temporalio.nexus.TemporalStartOperationContext
+    ):
+        def custom_state(self) -> str:
+            raise NotImplementedError
+
+    # assert-type-error-pyright: 'cannot be assigned to parameter "start".+temporal_operation'
+    @temporalio.nexus.temporal_operation  # type: ignore
+    async def my_temporal_operation_with_workflow_run_context(
+        self,
+        _ctx: MyCustomTemporalStartOperationContext,
+        _client: temporalio.nexus.TemporalNexusClient,
+        _input: int,
+    ) -> temporalio.nexus.TemporalOperationResult[None]:
+        raise NotImplementedError
+
+    # A workflow run operation receives WorkflowRunOperationContext at runtime,
+    # so requiring an arbitrary user subclass is not safe.
+    class MyCustomWorkflowRunOperationContext(
+        temporalio.nexus.WorkflowRunOperationContext
+    ):
+        def custom_state(self) -> str:
+            raise NotImplementedError
+
+    # assert-type-error-pyright: 'cannot be assigned to parameter "start".+workflow_run_operation'
+    @temporalio.nexus.workflow_run_operation  # type: ignore
+    async def my_workflow_run_operation_with_custom_context(
+        self,
+        _ctx: MyCustomWorkflowRunOperationContext,
+        _input: MyInput,
+    ) -> temporalio.nexus.WorkflowHandle[MyOutput]:
         raise NotImplementedError
 
 

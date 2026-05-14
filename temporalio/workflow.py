@@ -5565,7 +5565,7 @@ class NexusClient(ABC, Generic[ServiceT]):
         operation: Callable[
             [
                 ServiceHandlerT,
-                nexusrpc.handler.StartOperationContext,
+                temporalio.nexus.TemporalStartOperationContext,
                 temporalio.nexus.TemporalNexusClient,
                 InputT,
             ],
@@ -5736,7 +5736,7 @@ class NexusClient(ABC, Generic[ServiceT]):
         operation: Callable[
             [
                 ServiceT,
-                nexusrpc.handler.StartOperationContext,
+                temporalio.nexus.TemporalStartOperationContext,
                 temporalio.nexus.TemporalNexusClient,
                 InputT,
             ],

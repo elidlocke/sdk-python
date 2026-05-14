@@ -15,9 +15,11 @@ from nexusrpc import (
     InputT,
     OutputT,
 )
-from nexusrpc.handler import StartOperationContext
 
-from temporalio.nexus._operation_context import WorkflowRunOperationContext
+from temporalio.nexus._operation_context import (
+    TemporalStartOperationContext,
+    WorkflowRunOperationContext,
+)
 from temporalio.nexus._temporal_client import (
     TemporalNexusClient,
     TemporalOperationResult,
@@ -53,7 +55,7 @@ def get_workflow_run_start_method_input_and_output_type_annotations(
 
 def get_temporal_operation_start_method_input_and_output_type_annotations(
     start: Callable[
-        [ServiceHandlerT, StartOperationContext, TemporalNexusClient, InputT],
+        [ServiceHandlerT, TemporalStartOperationContext, TemporalNexusClient, InputT],
         Awaitable[TemporalOperationResult[OutputT]],
     ],
 ) -> tuple[
@@ -67,7 +69,7 @@ def get_temporal_operation_start_method_input_and_output_type_annotations(
     """
     return _get_wrapped_start_method_input_and_output_type_annotations(
         start,
-        expected_param_types=(StartOperationContext, TemporalNexusClient),
+        expected_param_types=(TemporalStartOperationContext, TemporalNexusClient),
         expected_return_origin=TemporalOperationResult,
     )
 
@@ -142,7 +144,7 @@ def _get_start_method_input_and_output_type_annotations(
         for index, (param_type, expected_param_type) in enumerate(
             zip(param_types, expected_param_types), start=1
         ):
-            if not _is_subclass(param_type, expected_param_type):
+            if not _is_subclass(expected_param_type, param_type):
                 warnings.warn(
                     f"Expected parameter {index} of {start} to be an instance of "
                     f"{expected_param_type.__name__}, but is {param_type}."

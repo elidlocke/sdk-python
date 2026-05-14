@@ -28,6 +28,7 @@ from nexusrpc.handler import (
     OperationContext,
     StartOperationContext,
 )
+from typing_extensions import Self
 
 import temporalio.api.common.v1
 import temporalio.api.workflowservice.v1
@@ -277,6 +278,26 @@ class _TemporalStartOperationContext(_TemporalOperationCtx[StartOperationContext
                 f"Failed to create WorkflowExecutionStarted event links for workflow {workflow_handle}: {e}"
             )
         return workflow_handle
+
+
+class TemporalStartOperationContext(StartOperationContext):
+    """Context received by a Temporal operation."""
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        """Initialize the Temporal operation context."""
+        super().__init__(*args, **kwargs)
+        self._temporal_context = _TemporalStartOperationContext.get()
+
+    @classmethod
+    def _from_start_operation_context(cls, ctx: StartOperationContext) -> Self:
+        return cls(
+            **{f.name: getattr(ctx, f.name) for f in dataclasses.fields(ctx)},
+        )
+
+    @property
+    def metric_meter(self) -> temporalio.common.MetricMeter:
+        """The metric meter"""
+        return self._temporal_context.metric_meter
 
 
 class WorkflowRunOperationContext(StartOperationContext):
